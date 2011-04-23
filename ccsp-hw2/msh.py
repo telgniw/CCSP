@@ -38,7 +38,7 @@ class InfoQueryHandler(MshHandler):
     @classmethod
     def _all_(self, page_name):
         key = pickle.dumps(page_name)
-        tmp = None #memcache.get(key)
+        tmp = memcache.get(key)
         if tmp is not None:
             dic = pickle.loads(tmp)
         else:
@@ -58,7 +58,7 @@ class InfoQueryHandler(MshHandler):
     @classmethod
     def _single_(self, page_name, id):
         key = pickle.dumps((page_name, id))
-        tmp = None #memcache.get(key)
+        tmp = memcache.get(key)
         if tmp is not None:
             dic = pickle.loads(tmp)
         else:
@@ -90,12 +90,18 @@ class InfoQueryHandler(MshHandler):
 class DeptHandler(InfoQueryHandler):
     def handle_request(self):
         id = self.request.get('id')
-        if id:
-            dic = self.get_info(id)
+        if not id:
+            ret = dict2list(self.get_info())
         else:
-            dic = self.get_info()
+            li = dict2list(self.get_info(id))
+            name = DeptHandler.get_info()[id]
+            ret = [
+                {'id': id},
+                {'name': name},
+                {'doctor': li}
+            ]
         self.response.out.write(
-            simplejson.dumps(dict2list(dic), ensure_ascii=False)
+            simplejson.dumps(ret, ensure_ascii=False)
         )
     
     @classmethod
@@ -108,12 +114,18 @@ class DeptHandler(InfoQueryHandler):
 class DoctorHandler(InfoQueryHandler):
     def handle_request(self):
         id = self.request.get('id')
-        if id:
-            dic = self.get_info(id)
+        if not id:
+            ret = dict2list(self.get_info())
         else:
-            dic = self.get_info()
+            li = dict2list(self.get_info(id))
+            name = DoctorHandler.get_info()[id]
+            ret = [
+                {'id': id},
+                {'name': name},
+                {'dept': li}
+            ]
         self.response.out.write(
-            simplejson.dumps(dict2list(dic), ensure_ascii=False)
+            simplejson.dumps(ret, ensure_ascii=False)
         )
     
     @classmethod
