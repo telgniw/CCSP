@@ -1,0 +1,33 @@
+#bar {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 1.5em;
+    background: black;
+}
+#bar #user {
+    float: right;
+    color: yellow;
+}
+body {
+    position: fixed;
+    top: 2em;
+    left: 0px;
+    width: 100%;
+}
+textarea {
+    width: 50%;
+    height: 10em;
+}
+input {
+    display: block;
+}
+.message span {
+    display: block;
+}
+#footer {
+    position: fixed;
+    bottom: 0px;
+    right: 0px;
+}
