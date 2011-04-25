@@ -53,7 +53,7 @@ def main():
         ('/delete', DeleteHandler),
         ('/logout', LogoutHandler),
         ('/query', QueryHandler),
-        ], debug=True
+        ], debug=False
     )
     util.run_wsgi_app(application)
 

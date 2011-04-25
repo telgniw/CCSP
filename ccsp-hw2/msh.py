@@ -11,6 +11,7 @@ from django.utils import simplejson
 from google.appengine.api import memcache, urlfetch
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
+from google.appengine.runtime import DeadlineExceededError
 import re, urllib, pickle
 
 CACHE_EXPIRE = 86400
@@ -162,10 +163,17 @@ class MshHandler(webapp.RequestHandler):
         self.handle_request()
     def post(self):
         self.handle_request()
+    def handle_request(self):
+        try:
+            self._handle_request_()
+        except DeadlineExceededError:
+            report_error(self.response, 'Timeout')
+        except:
+            report_error(self.response, 'Error')
 
 class DeptHandler(MshHandler):
     """ handling query for departments """
-    def handle_request(self):
+    def _handle_request_(self):
         id = self.request.get('id')
         if not id:
             ret = dict2list(self.get_info())
@@ -191,7 +199,7 @@ class DeptHandler(MshHandler):
 
 class DoctorHandler(MshHandler):
     """ handling query for doctors """
-    def handle_request(self):
+    def _handle_request_(self):
         id = self.request.get('id')
         if not id:
             ret = dict2list(self.get_info())
@@ -224,7 +232,7 @@ class DoctorHandler(MshHandler):
 
 class RegisterHandler(MshHandler):
     """ handling register """
-    def handle_request(self):
+    def _handle_request_(self):
         fields = {
             'doctor': '醫生',
             'time': '看診時間',
@@ -305,7 +313,7 @@ class RegisterHandler(MshHandler):
     
 class CancelRegisterHandler(MshHandler):
     """ handling cancel """
-    def handle_request(self):
+    def _handle_request_(self):
         fields = {
             'doctor': '醫生',
             'time': '看診時間',
@@ -342,7 +350,7 @@ def main():
         ('/msh/doctor', DoctorHandler),
         ('/msh/register', RegisterHandler),
         ('/msh/cancel_register', CancelRegisterHandler),
-    ], debug=True)
+    ], debug=False)
     run_wsgi_app(application)
 
 if __name__ == '__main__':
