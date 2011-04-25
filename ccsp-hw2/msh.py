@@ -32,6 +32,12 @@ def dict2list(dic):
         ret.append({pair[0]: pair[1]})
     return ret;
 
+def quote(s):
+    return urllib.quote(s.encode('unicode-escape'))
+
+def unquote(s):
+    return s.decode('big5').encode('utf-8')
+
 def parse_time(time):
     time = time.split('-')
     date = str(int(time[0])-1911) + ''.join(time[1:3])
@@ -107,6 +113,15 @@ def query_clino(doctor, date):
     global CACHE_EXPIRE
     memcache.set(key, clino, time=CACHE_EXPIRE)
     return clino
+
+def check_fields(handler, fields):
+    missing = {}
+    for k in fields.keys():
+        tmp = handler.request.get(k)
+        if not tmp:
+            missing.update({k: fields[k]})
+        setattr(handler, k, tmp)
+    return missing
 
 def report_success(response, num):
     response.out.write(simplejson.dumps({
@@ -196,40 +211,19 @@ class RegisterHandler(MshHandler):
             'id': '身分證字號',
             'birthday': '生日'
         }
-        missing = self._check_fields_(fields)
+        missing = check_fields(self, fields)
         if len(missing) > 0:
             return report_missing(self.response, missing)
         self.birthday = parse_time(self.birthday)
-        url = self._do_register_()
+        url = self._check_status_(self._do_register_())
+        if url is None:
+            return
         final_url = url.final_url
-        if not final_url:
-            return report_error(self.response, '掛號失敗')
-        if final_url.startswith('MakeReg.asp'):
-            url = urlfetch.fetch(get_url(final_url))
-        elif final_url.startswith('ConfirmReg.asp'):
-            fields = {
-                'name': '姓名',
-                'code': '郵遞區號',
-                'addr': '地址',
-                'tel': '電話'
-            }
-            missing = self._check_fields_(fields)
-            if len(missing) > 0:
-                return report_missing(self.response, missing)
-        else:
-            return report_error(self.response, urldecode(final_url)['message'])
-        if url.final_url.startswith('ShowRegResult.asp'):
+        if final_url.startswith('ShowRegResult.asp'):
             num = self._parse_result_(url)
             return report_success(self.response, num)
-    
-    def _check_fields_(self, fields):
-        missing = {}
-        for k in fields.keys():
-            tmp = self.request.get(k)
-            if not tmp:
-                missing.update({k: fields[k]})
-            setattr(self, k, tmp)
-        return missing
+        message = unquote(urldecode(final_url)['message'])
+        return report_error(self.response, message)
     
     def _do_register_(self):
         self.date, self.apn = parse_time(self.time)
@@ -244,8 +238,41 @@ class RegisterHandler(MshHandler):
             'clinic_no': self.clino,
             'Submit': '++%B0e%A5X++'
         })
-        url = urlfetch.fetch(get_url('CheckIdentity.asp', data))
+        return urlfetch.fetch(get_url('CheckIdentity.asp', data))
+    
+    def _check_status_(self, url):
+        final_url = url.final_url
+        if final_url.startswith('MakeReg.asp'):
+            return urlfetch.fetch(get_url(final_url))
+        elif final_url.startswith('ConfirmReg.asp'):
+            fields = {
+                'name': '姓名',
+                'area_code': '郵遞區號',
+                'addr': '地址',
+                'tel': '電話'
+            }
+            missing = check_fields(self, fields)
+            if len(missing) > 0:
+                return report_missing(self.response, missing)
+            return self._continue_register_()
         return url
+    
+    def _continue_register_(self):
+        data = urllib.urlencode({
+            'pt_name': quote(self.name),
+            'tel_no': self.tel,
+            'area_code': self.area_code,
+            'address': quote(self.addr),
+            'idchart': 'id',
+            'idchartno': self.id,
+            'birth_date': self.birthday,
+            'fvrvflag': 1,
+            'clinic_date': self.date,
+            'clinic_apn': self.apn,
+            'clinic_no': self.clino,
+            'Submit': '++%AA%EC%B6e%B1%BE%B8%B9++'
+        })
+        return urlfetch.fetch(get_url('MakeReg.asp', data))
     
     def _parse_result_(self, url):
         result = urldecode(url.final_url)['result']
@@ -254,7 +281,26 @@ class RegisterHandler(MshHandler):
     
 class CancelRegisterHandler(MshHandler):
     def handle_request(self):
-        pass
+        fields = {
+            'num': '看診編號',
+            'time': '看診時間',
+            'id': '身分證字號',
+            'birthday': '生日'
+        }
+        missing = check_fields(self, fields)
+        if len(missing) > 0:
+            return report_missing(self.response, missing)
+        url = self._do_cancel_()
+    
+    def _do_cancel(self):
+        self.date, self.apn = parse_time(self.time)
+        data = urllib.urlencode({
+            'CancelData': 'id,%s,%s,%s,%s,%s' % (
+                self.id, self.date, self.apn, self.num, self.birthday
+            ),
+            'Submit': '++%B0h%B1%BE++'
+        })
+        return urlfetch.fetch(get_url('CancelReg.asp', data))
 
 def main():
     application = webapp.WSGIApplication([
