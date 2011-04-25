@@ -12,7 +12,7 @@ from google.appengine.api import memcache, urlfetch
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.runtime import DeadlineExceededError
-import re, urllib, pickle
+import re, urllib, pickle, logging
 
 CACHE_EXPIRE = 86400
 MSH_URL = 'http://netreg.e-ms.com.tw/netreg'
@@ -42,7 +42,7 @@ def quote(s):
 
 def unquote(s):
     """ decode return message from Min-Sheng Hospotal """
-    return s.decode('big5').encode('utf-8')
+    return urllib.unquote(s).decode('big5')
 
 def parse_time(time):
     """ parse time from client """
@@ -92,7 +92,7 @@ def query_single(page_name, id, parse=None):
     soup = BeautifulSoup(url.content)
     dic, time, li = {}, [], soup.findAll('a')
     for ele in li:
-        if ele.get('href').startswith('MakeSureReg.asp'):
+        if 'MakeSureReg.asp' in ele.get('href'):
             tmp = re.split('[()]', ele.next)
             dic[tmp[0]] = tmp[1]
             tmp = urldecode(ele.get('href'))
@@ -116,7 +116,7 @@ def query_clino(doctor, date, apn):
     url = urlfetch.fetch(get_url('QueryDClinByDoc.asp', data))
     clino, soup = None, BeautifulSoup(url.content)
     for ele in soup.findAll('a'):
-        if ele.get('href').startswith('MakeSureReg.asp'):
+        if 'MakeSureReg.asp' in ele.get('href'):
             tmp = urldecode(ele.get('href'))
             if tmp['date'] == date and tmp['apn'] == apn:
                 clino = tmp['clino']
@@ -168,7 +168,7 @@ class MshHandler(webapp.RequestHandler):
             self._handle_request_()
         except DeadlineExceededError:
             report_error(self.response, 'Timeout')
-        except:
+        except (AttributeError, KeyError, ValueError):
             report_error(self.response, 'Error')
 
 class DeptHandler(MshHandler):
@@ -178,8 +178,8 @@ class DeptHandler(MshHandler):
         if not id:
             ret = dict2list(self.get_info())
         else:
-            doctor, time = self.get_info(id)
             name = self.get_info()[id]
+            doctor, time = self.get_info(id)
             ret = [
                 {'id': id},
                 {'name': name},
@@ -204,8 +204,8 @@ class DoctorHandler(MshHandler):
         if not id:
             ret = dict2list(self.get_info())
         else:
-            dept, time = self.get_info(id)
             name = self.get_info()[id]
+            dept, time = self.get_info(id)
             ret = [
                 {'id': id},
                 {'name': name},
@@ -234,10 +234,10 @@ class RegisterHandler(MshHandler):
     """ handling register """
     def _handle_request_(self):
         fields = {
-            'doctor': '醫生',
-            'time': '看診時間',
-            'id': '身分證字號',
-            'birthday': '生日'
+            'doctor': u'醫生',
+            'time': u'看診時間',
+            'id': u'身分證字號',
+            'birthday': u'生日'
         }
         missing = check_fields(self, fields)
         if len(missing) > 0:
@@ -246,9 +246,10 @@ class RegisterHandler(MshHandler):
         if url is None:
             return
         final_url = url.final_url
-        if final_url.startswith('ShowRegResult.asp'):
-            num = self._parse_result_(url)
-            return report_success(self.response, num)
+        if 'ShowRegResult.asp' in final_url:
+            ret = self._parse_result_(url)
+            if ret:
+                return report_success(self.response, ret)
         message = unquote(urldecode(final_url)['message'])
         return report_error(self.response, message)
     
@@ -272,14 +273,14 @@ class RegisterHandler(MshHandler):
     def _check_status_(self, url):
         """ 檢查掛號是否完成 """
         final_url = url.final_url
-        if final_url.startswith('MakeReg.asp'):
+        if 'MakeReg.asp' in final_url:
             return urlfetch.fetch(get_url(final_url))
-        elif final_url.startswith('ConfirmReg.asp'):
+        elif 'ConfirmReg.asp' in final_url:
             fields = {
-                'name': '姓名',
-                'area_code': '郵遞區號',
-                'addr': '地址',
-                'tel': '電話'
+                'name': u'姓名',
+                'area_code': u'郵遞區號',
+                'addr': u'地址',
+                'tel': u'電話'
             }
             missing = check_fields(self, fields)
             if len(missing) > 0:
@@ -307,28 +308,30 @@ class RegisterHandler(MshHandler):
     
     def _parse_result_(self, url):
         """ 回傳看診編號 """
-        result = urldecode(url.final_url)['result']
-        num = result.split('||')[7]
-        return num
+        result = unquote(urldecode(url.final_url)['result'])
+        try:
+            return result.split('||')[7]
+        except IndexError:
+            return None
     
 class CancelRegisterHandler(MshHandler):
     """ handling cancel """
     def _handle_request_(self):
         fields = {
-            'doctor': '醫生',
-            'time': '看診時間',
-            'id': '身分證字號',
-            'birthday': '生日',
-            'num': '看診編號'
+            'doctor': u'醫生',
+            'time': u'看診時間',
+            'id': u'身分證字號',
+            'birthday': u'生日',
+            'num': u'看診編號'
         }
         missing = check_fields(self, fields)
         if len(missing) > 0:
             return report_missing(self.response, missing)
         url = self._do_cancel_()
         message = unquote(urldecode(url.final_url)['message'])
-        if '成功' in message:
+        if u'成功' in message:
             return report_success(self.response, message)
-        message = re.sub('\(CancelRegByIdNo\)%0D%0A', '', message)
+        message = re.sub('\(CancelRegByIdNo\)\r\n', '', message)
         return report_error(self.response, message)
     
     def _do_cancel_(self):
