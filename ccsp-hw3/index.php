@@ -16,7 +16,7 @@
     <h1 id="pageTitle"></h1>
     <a id="backButton" class="button" href="#"></a>
     <?php if(!$user) { ?>
-    <a id="loginButton" class="button" href="<?php echo $loginUrl; ?>" target="_self"><img src="img/fb_login.png"></a>
+    <a id="loginButton" class="buttonImg" href="<?php echo $loginUrl; ?>" target="_self"><img src="img/fb_login.png"></a>
     <?php } else { ?>
     <a id="shareButton" class="buttonImg" href="<?php echo $shareUrl; ?>" target="_self"><img src="img/fb_share.png"></a>
     <?php } ?>
