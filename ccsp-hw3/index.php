@@ -7,7 +7,9 @@
   <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title><?php echo $APP_TITLE; ?> by 易</title>
-  <style type="text/css" media="screen">@import "iui/iui.css";</style>
+  <link rel="icon" href="favicon.ico">
+  <style type="text/css" media="handheld">@import "iui/iui.css";</style>
+  <style type="text/css" media="screen">@import "iui/iui-screen.css";</style>
   <script type="text/javascript" src="iui/iui.js"></script>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
 </head>

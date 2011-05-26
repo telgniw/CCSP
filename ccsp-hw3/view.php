@@ -14,26 +14,30 @@
     foreach($friends as $i => $friend) {
       $friend_list[$friend['id']] = true;
     }
-    $photos = $FB->api('/me/photos', Array(
-      'fields' => 'id,tags,picture,source'
-    ));
-    $photos = $photos['data'];
+    $fields = Array('fields' => 'id,tags,picture,source');
+    $photos = Array();
+    $photosPage = $FB->api('/me/photos', $fields);
     $counts = Array();
-    foreach($photos as $i => $photo) {
-      $tags = $photo['tags']['data'];
-      foreach($tags as $j => $tag) {
-        $id = $tag['id'];
-        if(!$friend_list[$id])
-          continue;
-        if($counts[$id]) {
-          $counts[$id] += 1;
-        } else {
-          $counts[$id] = 1;
-          $rphotos[$id] = Array();
-          $profile[$id] = $FB->api("/$id");
+    while(sizeof($photosPage['data']) > 0) {
+      foreach($photosPage['data'] as $i => $photo) {
+        $tags = $photo['tags']['data'];
+        foreach($tags as $j => $tag) {
+          $id = $tag['id'];
+          if(!$friend_list[$id])
+            continue;
+          if($counts[$id]) {
+            $counts[$id] += 1;
+          } else {
+            $counts[$id] = 1;
+            $rphotos[$id] = Array();
+            $profile[$id] = $FB->api("/$id");
+          }
+          array_push($rphotos[$id], $photo);
         }
-        array_push($rphotos[$id], $photo);
       }
+      $photos = array_merge($photos, $photosPage['data']);
+      $nextPage = parse_url($photosPage['paging']['next']);
+      $photosPage = $FB->api($nextPage['path'].'?'.$nextPage['query'], $fields);
     }
     arsort($counts);
   }
@@ -42,7 +46,9 @@
   <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title><?php echo $APP_TITLE; ?> by 易</title>
-  <style type="text/css" media="screen">@import "iui/iui.css";</style>
+  <link rel="icon" href="favicon.ico">
+  <style type="text/css" media="handheld">@import "iui/iui.css";</style>
+  <style type="text/css" media="screen">@import "iui/iui-screen.css";</style>
   <script type="text/javascript" src="iui/iui.js"></script>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
 </head>
@@ -52,7 +58,7 @@
       for(i in img_list) {
         if(img_list[i].id) {
           document.write('<span><a href="#' + img_list[i].id + '">');
-          document.write('<img src="' + img_list[i].src + '">');
+          document.write('<img src="' + img_list[i].src + '" height="98">');
           document.write('</a></span>');
         }
       }
