@@ -12,13 +12,13 @@
   ));
 
   $perms = 'user_photos,user_photo_video_tags,friends_photos,friends_photo_video_tags,publish_stream';
-  $user = $FB->getUser();
-  if($user) {
-    try {
-      $me = $FB->api('/me');
-    } catch (FacebookApiException $e) {
-      $user = null;
-    }
+  $session = $FB->getSession();
+  try {
+    $user = $FB->getUser();
+    $me = $FB->api('/me');
+  } catch (FacebookApiException $e) {
+    $user = null;
+    $me = null;
   }
 
   $loginUrl = $FB->getLoginUrl(array(
@@ -26,8 +26,7 @@
   ));
 
   $url = urlencode('http://'.$_SERVER['SERVER_NAME'].$_SERVER['REQUEST_URI']);
-  $msg = urlencode('View your most tagged friends!');
   $appUrl = urlencode('http://www.facebook.com/apps/application.php?id='.$APP_ID);
   $img = urlencode('http://'.$_SERVER['SERVER_NAME'].'/img/icon.png');
-  $shareUrl = "http://www.facebook.com/dialog/feed?app_id=$APP_ID&redirect_uri=$url&message=$msg&link=$appUrl&picture=$img";
+  $shareUrl = "http://www.facebook.com/dialog/feed?app_id=$APP_ID&redirect_uri=$url&link=$appUrl&picture=$img&access_token=$access";
 ?>

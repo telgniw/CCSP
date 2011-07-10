@@ -17,18 +17,18 @@
   <div class="toolbar">
     <h1 id="pageTitle"></h1>
     <a id="backButton" class="button" href="#"></a>
-    <?php if(!$user) { ?>
+    <?php if(!$me): ?>
     <a id="loginButton" class="buttonImg" href="<?php echo $loginUrl; ?>" target="_self"><img src="img/fb_login.png"></a>
-    <?php } else { ?>
+    <?php else: ?>
     <a id="shareButton" class="buttonImg" href="<?php echo $shareUrl; ?>" target="_self"><img src="img/fb_share.png"></a>
-    <?php } ?>
+    <?php endif ?>
   </div>
   <ul id="home" title="Home" selected="true">
     <li><a href="#about">About <?php echo $APP_TITLE; ?></a></li>
-    <?php if(!$user) { ?>
-    <?php } else { ?>
+    <?php if(!$me): ?>
+    <?php else: ?>
     <li><a href="view.php" target="_self">View Your Photos</a></li>
-    <?php } ?>
+    <?php endif ?>
   </ul>
   <div id="about" title="About <?php echo $APP_TITIE; ?>" class="panel">
     <h2>What is <?php echo $APP_TITLE; ?>?</h2>
